@@ -26,7 +26,7 @@ Hier haben wir einen einfachen Wert:
 
 ![](pictures/value.png)
 
-Außerdem wissen wir, wie wir eine Funktion auf diesen Wert anwenden können: 
+Außerdem wissen wir, wie wir eine Funktion (+3) auf diesen Wert anwenden können: 
 
 ![](pictures/value_apply.png)
 
