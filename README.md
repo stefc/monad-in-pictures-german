@@ -15,12 +15,14 @@ Original Artikel: http://adit.io/posts/2013-04-17-functors,_applicatives,_and_mo
 
 ## Inhaltsverzeichnis
 
+- [Kontext](#kontext)
 - [Funktoren](#funktoren)
 - [Applikative](#applikative)
 - [Monaden](#monaden)
 - [Zusammenfassung](#zusammenfassung)
 - [Weitere Übersetzungen](#weitere-%C3%9Cbersetzungen)
 
+# Kontext
 
 Hier haben wir einen einfachen Wert: 
 
@@ -34,13 +36,15 @@ Einfacher geht's nicht! Wir wollen das erweitern, indem wir festlegen, dass sich
 
 ![](pictures/value_and_context.png)
 
-Wenn du jetzt eine Funktion auf einen solchen Wert anwendest, erhältst du **je nach Kontext** ein anderes Ergebnis. Genau auf diesen Gedanken basieren Applikative, Monaden, Pfeile usw. Für den `Maybe`-Datentypen sind zwei zugehörige Kontexte definiert: 
+Wenn du jetzt eine Funktion auf einen solchen Wert anwendest, erhältst du **je nach Kontext** ein anderes Ergebnis. Genau auf diesen Gedanken basieren Applikative, Monaden, Pfeile usw. Für den `Option`-Datentypen sind zwei zugehörige Kontexte definiert: 
 
 ![](pictures/context.png)
 
-    data Maybe a = Nothing | Just a
+```haskell
+    data Option a = None | Some a
+```
 
-Wir werden gleich sehen, wie sich die Anwendung einer Funktion auf ein `Just a` von einem `Nothing` unterscheidet. Als erstes wollen wir über Funktoren sprechen!
+Wir werden gleich sehen, wie sich die Anwendung einer Funktion auf ein `Some a` von einem `None` unterscheidet. Als erstes wollen wir über Funktoren sprechen!
 
 
 # Funktoren
@@ -52,8 +56,10 @@ Ist ein Wert in einen Kontext eingepackt, kann man keine normale Funktion darauf
 
 An dieser Stelle kommt `fmap` ins Spiel. `fmap` kommt von der Straße, `fmap` ist ein Kontext-Hipster. `fmap` weiß, wie man Funktionen auf in einen Kontext eingepackte Werte anwendet. Stell dir zum Beispiel vor, du wolltest `(+3)` auf `Just 2` anwenden. Verwende hierfür `fmap`:
 
+```haskell
     > fmap (+3) (Just 2)
     Just 5
+```
     
 ![](fmap_apply.png)
 
@@ -73,14 +79,18 @@ Jeder x-beliebige Datentyp kann ein `Functor` sein, solange definiert ist, wie m
 
 Wir können also das hier machen:
 
+```haskell
     > fmap (+3) (Just 2)
     Just 5
+```
 
 Und `fmap` wendet diese Funktion auf magische Weise an, weil `Maybe` ein Funktor ist. Es gibt an, wie `fmap` `Just`s und `Nothing`s darauf anwendet:
 
+```haskell
     instance Functor Maybe where
         fmap func (Just val) = Just (func val)
         fmap func Nothing = Nothing
+````
 
 Das hier geschieht hinter den Kulissen, wenn wir `fmap (+3) (Just 2)` schreiben:
 
@@ -90,41 +100,50 @@ So, und jetzt möchtest du `fmap` einfach mal darum bitten, `(+3)` auf `Nothing`
 
 ![](pictures/fmap_nothing.png)
 
+```haskell
     > fmap (+3) Nothing
     Nothing
+```
     
 ![](pictures/bill.png)
 
 Genau wie Morpheus in Matrix weiß `fmap` einfach, was zu tun ist; wenn du mit `Nothing` anfängst, erhältst du `Nothing` zurück! `fmap` ist wie Zen. Nun ergibt es auch Sinn, dass es den `Maybe`-Datentypen gibt. Beispielsweise so arbeitet man mit einem Datensatz aus einer Datenbank in einer Sprache ohne `Maybe`:
 
+```pascal
     post = Post.find_by_id(1)
     if post
       return post.title
     else
       return nil
     end
+```
 
 Jedoch in Haskell:
 
+```haskell
     fmap (getPostTitle) (findPost 1)
+````
 
 Sollte `findPost` einen Post zurückliefern, erhalten wir den Titel mit `getPostTitle`. Sollte hingegen `Nothing` zurückgeliefert werden, geben wir `Nothing` zurück! Ziemlich hübsch, nicht wahr? `<$>` ist die Infix-Version von `fmap`, daher siehst du stattdessen oft folgendes:
 
+```haskell
     getPostTitle <$> (findPost 1)
-
+```
 Noch ein Beispiel: Was passiert, wenn du eine Funktion auf eine Liste anwendest?
 
 ![](pictures/fmap_list.png)
 
 Auch Listen sind Funktoren! So sieht die Definition aus:
 
+```haskell
     instance Functor [] where
         fmap = map
-
+```
 Okay okay, ein letztes Beispiel: Was passiert, wenn du eine Funktion auf eine andere Funktion anwendest?
 
+```haskell
     fmap (+3) (+2)
-
+```
 So sieht eine Funktion aus:
 
 ![](pictures/function_with_value.png)
@@ -135,10 +154,12 @@ So sieht eine Funktion aus, die auf eine andere Funktion angewendet worden ist:
 
 Das Ergebnis ist einfach eine weitere Funktion!
 
+```haskell
     > import Control.Applicative
     > let foo = fmap (+3) (+2)
     > foo 10
     15
+```
 
 Funktionen sind also auch Funktoren!
 
@@ -176,27 +197,36 @@ Die Verwendung von `<*>` führt zu interessanten Situationen. Zum Beispiel:
 
 Hier mal etwas, das man mit Applikativen anstellen kann, aber nicht mit Funktoren. Wie wendet man eine Funktion, die zwei Argumente annimmt, auf zwei eingepackte Werte an?
 
+```haskell
     > (+) <$> (Just 5)
     Just (+5)
     > Just (+5) <$> (Just 4)
-    FEHLER ??? WAS BEDEUTET DAS ÜBERHAUPT UND WARUM IST DIE FUNKTION IN EIN JUST EINGEPACKT
+```
+
+FEHLER ??? WAS BEDEUTET DAS ÜBERHAUPT UND WARUM IST DIE FUNKTION IN EIN JUST EINGEPACKT
 
 Applikative:
 
+```haskell
     > (+) <$> (Just 5)
     Just (+5)
     > Just (+5) <*> (Just 3)
     Just 8
+```
 
 `Applicative` schiebt `Functor` beiseite. „Große Jungs können Funktionen mit einer beliebigen Anzahl an Argumenten verwenden“, sagt es. „Ausgerüstet mit `<$>` und `<*>` kann ich jede Funktion annehmen, die eine beliebige Anzahl an eingepackten Argumenten erwartet. Danach übergebe ich ihr alle eingepackten Werte und bekomme einen eingepackten Wert zurück! HAHAHAHAHA!“
 
+```haskell
     > (*) <$> Just 5 <*> Just 3
     Just 15
+```
 
 Und hey! Es gibt eine Funktion namens `liftA2`, die dasselbe erledigt:
 
+```haskell
     > liftA2 (*) (Just 5) (Just 3)
     Just 15
+```
 
 
 # Monaden
@@ -221,9 +251,11 @@ Monaden wenden Funktionen, **die einen eingepackten Wert zurückliefern**, auf e
 
 Nehmen wir an, bei `half` handele es sich um eine Funktion, die nur mit geraden Zahlen umgehen kann:
 
+```haskell
     half x = if even x
                then Just (x `div` 2)
                else Nothing
+````
 
 ![](pictures/half.png)
 
@@ -233,21 +265,25 @@ Was passiert, wenn wir sie mit einem eingepackten Wert füttern?
 
 Wir müssen `>>=` verwenden, um unseren eingepackten Wert in die Funktion zu schieben. Hier ein Foto von `>>=`:
 
-![](pictures/plunger.jpg)
+![](pictures/plunger.png)
 
 Und so funktioniert es:
 
+```haskell
     > Just 3 >>= half
     Nothing
     > Just 4 >>= half
     Just 2
     > Nothing >>= half
     Nothing
+```
 
 Was passiert darin? `Monad` ist eine weitere Typenklasse. Hier ein Teil der Definition:
 
+```haskell
     class Monad m where
         (>>=) :: m a -> (a -> m b) -> m b
+```
 
 Dabei ist `>>=`:
 
@@ -255,9 +291,11 @@ Dabei ist `>>=`:
 
 Also ist `Maybe` eine Monade:
 
+```haskell
     instance Monad Maybe where
         Nothing >>= func = Nothing
         Just val >>= func = func val
+```
 
 Hier siehst du sie in Aktion mit `Just 3`!
 
@@ -269,8 +307,10 @@ Und wenn man `Nothing` übergibt, ist es sogar noch einfacher:
 
 Man kann diese Funktionsaufrufe auch verketten:
 
+```haskell
     > Just 20 >>= half >>= half >>= half
     Nothing
+```
     
 ![](pictures/monad_chain.png)
 
@@ -284,32 +324,41 @@ Genauer mit drei Funktionen. `getLine` benötigt keine Argumente und nimmt Benut
 
 ![](pictures/getLine.png)
 
+```haskell
     getLine :: IO String
+```
 
 `readFile` benötigt eine Zeichenkette (einen Dateinamen) und gibt den Inhalt dieser Datei zurück:
 
 ![](pictures/readFile.png)
 
+```haskell
     readFile :: FilePath -> IO String
-
+```
 `putStrLn` nimmt eine Zeichenkette an und gibt sie aus:
 
 ![](pictures/putStrLn.png)
 
+```haskell
     putStrLn :: String -> IO ()
+```
 
 Alle drei Funktionen nehmen einen regulären oder gar keinen Wert an und geben einen eingepackten Wert zurück. Wir können sie alle mit Hilfe von `>>=` verketten!
 
 ![](pictures/monad_io.png)
 
+```haskell
     getLine >>= readFile >>= putStrLn
+```
 
 Oh ja! Wie Plätze in der ersten Reihe der Monaden-Show! Haskell bietet uns auch syntaktischen Zucker für Monaden, die `do`-Notation, an:
 
+```haskell
     foo = do
         filename <- getLine
         contents <- readFile filename
         putStrLn contents
+```
 
 # Zusammenfassung
 
